@@ -1,0 +1,5 @@
+{
+  "name": "SYS - Gestión de Inventario y Ventas",
+  "description": "Un sistema interno robusto para la administración de stock de ropa, registro de entradas/salidas y control de ventas para Lima y provincias, diseñado para múltiples propietarios.",
+  "requestFramePermissions": []
+}
