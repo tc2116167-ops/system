@@ -61,8 +61,8 @@ export interface Promocion {
   descripcion: string;
   tipo: 'cantidad_fija' | 'descuento_porcentaje';
   cantidadRequerida: number;
-  valorPromo: number; 
-  modelosAplicables: string[]; 
+  valorPromo: number;
+  modelosAplicables: string[];
   propietarioId: Propietario;
   estado: 'Activa' | 'Inactiva';
 }
@@ -73,13 +73,14 @@ export interface Movimiento {
   tipo: TipoMovimiento;
   cantidad: number;
   precioVenta?: number;
-  comisionPagada?: number; 
+  comisionPagada?: number;
   estadoComision?: 'Pendiente' | 'Pagado';
   vendedor?: string;
   ubicacion?: Ubicacion;
   fecha: string;
   comentario?: string;
   propietarioId?: Propietario;
+  estadoPago?: 'Pendiente' | 'Pagado' | 'Adelanto';
 }
 
 export interface PagoComision {

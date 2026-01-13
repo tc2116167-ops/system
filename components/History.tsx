@@ -7,9 +7,10 @@ interface HistoryProps {
   productos: Producto[];
   role: UserRole;
   currentUser: Usuario;
+  onUpdateMovement?: (id: string, data: Partial<Movimiento>) => void;
 }
 
-const History: React.FC<HistoryProps> = ({ movimientos, productos, role, currentUser }) => {
+const History: React.FC<HistoryProps> = ({ movimientos, productos, role, currentUser, onUpdateMovement }) => {
   const isAdmin = role === UserRole.ADMIN;
   const [onlyMine, setOnlyMine] = useState(role === UserRole.SELLER);
   const [searchTerm, setSearchTerm] = useState('');
@@ -63,7 +64,7 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
             {/* Buscador Rápido */}
             <div className="relative w-full sm:w-64">
               <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs"></i>
-              <input 
+              <input
                 type="text"
                 placeholder="Buscar en historial..."
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border-none rounded-xl text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
@@ -74,13 +75,13 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
 
             {/* Toggle de Vista */}
             <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl shrink-0">
-              <button 
+              <button
                 onClick={() => setOnlyMine(true)}
                 className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${onlyMine ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
               >
                 Mis Acciones
               </button>
-              <button 
+              <button
                 onClick={() => setOnlyMine(false)}
                 className={`px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${!onlyMine ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
               >
@@ -103,6 +104,7 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
                 {isAdmin && <th className="py-6 px-8">Dueño de Prenda</th>}
                 <th className="py-6 px-8 text-center">Cant.</th>
                 <th className="py-6 px-8">Detalle / Valor</th>
+                <th className="py-6 px-8">Estado Pago</th>
                 <th className="py-6 px-8">Responsable</th>
               </tr>
             </thead>
@@ -111,18 +113,17 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
                 const p = productos.find(prod => prod.id === m.productoId);
                 const isVenta = m.tipo === TipoMovimiento.VENTA;
                 const isSystem = m.vendedor === 'Sistema' || !m.vendedor;
-                
+
                 return (
                   <tr key={m.id} className="text-slate-700 hover:bg-slate-50/80 transition-all group">
                     <td className="py-5 px-8">
                       <p className="text-[11px] font-black text-slate-500 whitespace-nowrap">{m.fecha}</p>
-                      <p className="font-mono text-[8px] text-slate-300 uppercase tracking-tighter">ID: {m.id.substring(0,8)}</p>
+                      <p className="font-mono text-[8px] text-slate-300 uppercase tracking-tighter">ID: {m.id.substring(0, 8)}</p>
                     </td>
                     <td className="py-5 px-8">
-                      <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest inline-flex items-center ${
-                        m.tipo === TipoMovimiento.VENTA ? 'bg-emerald-50 text-emerald-600' : 
+                      <span className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest inline-flex items-center ${m.tipo === TipoMovimiento.VENTA ? 'bg-emerald-50 text-emerald-600' :
                         m.tipo === TipoMovimiento.ENTRADA ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'
-                      }`}>
+                        }`}>
                         <i className={`fas ${m.tipo === TipoMovimiento.VENTA ? 'fa-cart-shopping' : m.tipo === TipoMovimiento.ENTRADA ? 'fa-arrow-up' : 'fa-arrow-down'} mr-2`}></i>
                         {m.tipo}
                       </span>
@@ -155,6 +156,27 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
                       )}
                     </td>
                     <td className="py-5 px-8">
+                      {isVenta && onUpdateMovement ? (
+                        <button
+                          onClick={() => {
+                            const nextStatus =
+                              m.estadoPago === 'Pendiente' ? 'Pagado' :
+                                m.estadoPago === 'Pagado' ? 'Adelanto' : 'Pendiente';
+                            onUpdateMovement(m.id, { estadoPago: nextStatus });
+                          }}
+                          className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all hover:scale-105 ${m.estadoPago === 'Pagado' ? 'bg-emerald-100/50 text-emerald-700 border-emerald-200' :
+                            m.estadoPago === 'Adelanto' ? 'bg-amber-100/50 text-amber-700 border-amber-200' :
+                              'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                            }`}
+                        >
+                          {m.estadoPago || 'Pendiente'}
+                          <i className="fas fa-sync-alt ml-2 opacity-50"></i>
+                        </button>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
+                    </td>
+                    <td className="py-5 px-8">
                       <div className="flex items-center">
                         <div className={`w-7 h-7 rounded-lg flex items-center justify-center mr-3 text-[10px] font-black ${isSystem ? 'bg-amber-50 text-amber-500' : 'bg-indigo-50 text-indigo-500'}`}>
                           {isSystem ? <i className="fas fa-robot"></i> : (m.vendedor?.charAt(0) || 'U')}
@@ -172,13 +194,13 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
               }) : (
                 <tr>
                   <td colSpan={isAdmin ? 7 : 6} className="py-32 text-center">
-                      <div className="flex flex-col items-center">
-                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                          <i className="fas fa-search text-3xl text-slate-200"></i>
-                        </div>
-                        <p className="text-slate-400 font-black uppercase text-xs tracking-widest">Sin resultados para mostrar</p>
-                        <p className="text-slate-300 text-[10px] mt-2 font-bold uppercase">Prueba ajustando los filtros o el buscador</p>
+                    <div className="flex flex-col items-center">
+                      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6">
+                        <i className="fas fa-search text-3xl text-slate-200"></i>
                       </div>
+                      <p className="text-slate-400 font-black uppercase text-xs tracking-widest">Sin resultados para mostrar</p>
+                      <p className="text-slate-300 text-[10px] mt-2 font-bold uppercase">Prueba ajustando los filtros o el buscador</p>
+                    </div>
                   </td>
                 </tr>
               )}
@@ -186,7 +208,7 @@ const History: React.FC<HistoryProps> = ({ movimientos, productos, role, current
           </table>
         </div>
       </div>
-      
+
       {/* INDICADOR DE TOTALES FILTRADOS */}
       <div className="flex justify-end px-8">
         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">

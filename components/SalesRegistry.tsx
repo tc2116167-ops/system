@@ -72,7 +72,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
   const [cart, setCart] = useState<CartItem[]>([]);
   const [ubicacion, setUbicacion] = useState<Ubicacion>(Ubicacion.LIMA);
   const [comentario, setComentario] = useState('');
-  
+
   // Estado para éxito y envío WhatsApp
   const [showSuccess, setShowSuccess] = useState(false);
   const [lastSaleData, setLastSaleData] = useState<any>(null);
@@ -85,6 +85,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
 
   // Datos de cliente para Lima
   const [distritoSeleccionado, setDistritoSeleccionado] = useState('');
+  const [direccionLima, setDireccionLima] = useState('');
   const [costoDelivery, setCostoDelivery] = useState(0);
 
   // Datos para Provincia
@@ -96,7 +97,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
 
   const [totalAjustado, setTotalAjustado] = useState<number | null>(null);
   const [promoAplicadaId, setPromoAplicadaId] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -104,9 +105,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
   const filteredProducts = useMemo(() => {
     if (!searchQuery) return productos.slice(0, 8);
     const q = searchQuery.toLowerCase();
-    return productos.filter(p => 
-      p.nombre.toLowerCase().includes(q) || 
-      p.color.toLowerCase().includes(q) || 
+    return productos.filter(p =>
+      p.nombre.toLowerCase().includes(q) ||
+      p.color.toLowerCase().includes(q) ||
       p.propietario.toLowerCase().includes(q)
     );
   }, [productos, searchQuery]);
@@ -114,7 +115,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
   const activePromosSugeridas = useMemo(() => {
     return promociones.filter(promo => {
       if (promo.estado !== 'Activa') return false;
-      const itemsQueCalifican = cart.filter(item => 
+      const itemsQueCalifican = cart.filter(item =>
         promo.modelosAplicables.includes(item.producto.nombre)
       );
       const cantidadTotalEnCarrito = itemsQueCalifican.reduce((acc, item) => acc + item.cantidad, 0);
@@ -181,7 +182,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
     }
 
     const factorAjuste = totalAjustado !== null ? totalAjustado / subtotalSugerido : 1;
-    
+
     // Almacenar datos para el resumen de éxito
     const dataForWA = {
       cliente: clienteNombre,
@@ -189,6 +190,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
       tel: clienteTelefono,
       ubicacion: ubicacion,
       distrito: distritoSeleccionado,
+      direccion: direccionLima,
       agencia: agenciaProvincia === 'Otro' ? agenciaOtro : agenciaProvincia,
       destino: destinoProvincia,
       pago: estadoPagoEnvio,
@@ -200,6 +202,10 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
 
     setLastSaleData(dataForWA);
 
+    let estadoPagoMapped: 'Pendiente' | 'Pagado' | 'Adelanto' = 'Pendiente';
+    if (estadoPagoEnvio === 'Pago Completo') estadoPagoMapped = 'Pagado';
+    else if (estadoPagoEnvio.includes('Adelanto')) estadoPagoMapped = 'Adelanto';
+
     // Registrar cada producto en el historial
     cart.forEach(item => {
       onRegisterSale({
@@ -209,7 +215,8 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
         tipo: TipoMovimiento.VENTA,
         vendedor: currentUser.nombre,
         ubicacion: ubicacion,
-        comentario: comentario // El historial detallado se maneja en el reporte de WA
+        comentario: comentario, // El historial detallado se maneja en el reporte de WA
+        estadoPago: estadoPagoMapped
       });
     });
 
@@ -223,6 +230,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
     setClienteNombre('');
     setClienteTelefono('');
     setDistritoSeleccionado('');
+    setDireccionLima('');
     setCostoDelivery(0);
     setClienteDni('');
     setDestinoProvincia('');
@@ -245,9 +253,10 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
     message += `*CLIENTE:* ${data.cliente.toUpperCase()}\n`;
     if (data.tel) message += `*TEL:* ${data.tel}\n`;
     if (data.dni) message += `*DNI:* ${data.dni}\n`;
-    
+
     if (data.ubicacion === Ubicacion.LIMA) {
       message += `*DESTINO:* ${data.distrito.toUpperCase()} (LIMA)\n`;
+      if (data.direccion) message += `*DIRECCIÓN:* ${data.direccion}\n`;
     } else {
       message += `*AGENCIA:* ${data.agencia.toUpperCase()}\n`;
       message += `*DESTINO:* ${data.destino.toUpperCase()}\n`;
@@ -259,7 +268,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
     data.items.forEach((item: CartItem) => {
       message += `- ${item.cantidad}x ${item.producto.nombre} (${item.producto.color} - ${item.producto.talla})\n`;
     });
-    
+
     message += `----------------------------\n`;
     if (data.comentario) message += `*OBS:* ${data.comentario}\n`;
     if (data.delivery > 0) message += `*DELIVERY:* S/ ${data.delivery}.00\n`;
@@ -286,14 +295,14 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center">
               <i className="fab fa-whatsapp mr-2 text-emerald-500 text-sm"></i> Enviar pedido por WhatsApp
             </h4>
-            
+
             <div className="space-y-6">
               <div>
                 <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Número de WhatsApp Destino</label>
                 <div className="relative">
                   <span className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-slate-400 text-sm">+51</span>
-                  <input 
-                    type="tel" 
+                  <input
+                    type="tel"
                     className="w-full bg-white border border-slate-200 rounded-2xl py-5 pl-14 pr-6 font-black text-lg text-slate-800 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
                     placeholder="999 999 999"
                     value={whatsappNumber}
@@ -303,7 +312,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
               </div>
 
               <div className="flex items-center gap-3 ml-1">
-                <button 
+                <button
                   type="button"
                   onClick={() => setRememberWA(!rememberWA)}
                   className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${rememberWA ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 bg-white'}`}
@@ -313,7 +322,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest cursor-pointer" onClick={() => setRememberWA(!rememberWA)}>Recordar este número</span>
               </div>
 
-              <button 
+              <button
                 onClick={sendToWhatsApp}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-6 rounded-2xl shadow-xl shadow-emerald-100 transition-all uppercase tracking-[0.3em] text-[11px] flex items-center justify-center"
               >
@@ -322,7 +331,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
             </div>
           </div>
 
-          <button 
+          <button
             onClick={resetForm}
             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-6 rounded-2xl transition-all uppercase tracking-[0.3em] text-[11px]"
           >
@@ -343,11 +352,11 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
               <h2 className="text-3xl font-black tracking-tighter uppercase">Terminal de Ventas</h2>
               <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-[0.3em] mt-2 opacity-70">Sistema SYS</p>
             </div>
-            
+
             <div className="relative flex-1 max-w-xl" ref={dropdownRef}>
               <div className="relative group">
                 <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-indigo-300"></i>
-                <input 
+                <input
                   type="text"
                   className="w-full bg-indigo-500/30 border-2 border-indigo-400/30 rounded-2xl py-5 pl-14 pr-6 font-bold text-white placeholder:text-indigo-200 focus:outline-none focus:bg-indigo-500/50 focus:border-white transition-all text-sm"
                   placeholder="Escribe el modelo o tono de la prenda..."
@@ -391,13 +400,13 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                   <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Define el punto de destino principal</p>
                 </div>
               </div>
-              
+
               <div className="flex bg-white p-2 rounded-2xl border border-slate-200 w-full md:w-auto shadow-inner">
                 {Object.values(Ubicacion).map(u => (
-                  <button 
-                    key={u} 
-                    type="button" 
-                    onClick={() => { setUbicacion(u); if(u !== Ubicacion.LIMA) setCostoDelivery(0); }} 
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => { setUbicacion(u); if (u !== Ubicacion.LIMA) setCostoDelivery(0); }}
                     className={`flex-1 md:w-40 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${ubicacion === u ? 'bg-indigo-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50'}`}
                   >
                     <i className={`fas ${u === Ubicacion.LIMA ? 'fa-city' : 'fa-truck-ramp-box'} mr-2`}></i>
@@ -430,9 +439,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                         </div>
                         <div className="flex items-center gap-8">
                           <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 p-1">
-                            <button type="button" onClick={() => { setCart(prev => prev.map(i => i.producto.id === item.producto.id ? {...i, cantidad: Math.max(1, i.cantidad - 1)} : i)); resetAjustes(); }} className="w-9 h-9 rounded-xl hover:bg-white text-slate-400 shadow-sm transition-all">-</button>
+                            <button type="button" onClick={() => { setCart(prev => prev.map(i => i.producto.id === item.producto.id ? { ...i, cantidad: Math.max(1, i.cantidad - 1) } : i)); resetAjustes(); }} className="w-9 h-9 rounded-xl hover:bg-white text-slate-400 shadow-sm transition-all">-</button>
                             <span className="w-10 text-center font-black text-slate-800 text-sm">{item.cantidad}</span>
-                            <button type="button" onClick={() => { setCart(prev => prev.map(i => i.producto.id === item.producto.id ? {...i, cantidad: i.cantidad + 1} : i)); resetAjustes(); }} className="w-9 h-9 rounded-xl hover:bg-white text-slate-400 shadow-sm transition-all">+</button>
+                            <button type="button" onClick={() => { setCart(prev => prev.map(i => i.producto.id === item.producto.id ? { ...i, cantidad: i.cantidad + 1 } : i)); resetAjustes(); }} className="w-9 h-9 rounded-xl hover:bg-white text-slate-400 shadow-sm transition-all">+</button>
                           </div>
                           <div className="text-right w-24 hidden sm:block">
                             <p className="font-black text-slate-800 text-sm">S/ {(item.precioUnitario * item.cantidad).toFixed(2)}</p>
@@ -462,13 +471,13 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                         <p className="text-[10px] text-indigo-300 font-bold uppercase tracking-widest">Completa los datos para el Courier Nel</p>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Nombre Completo del Cliente *</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="text"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="Ej: Sofia Mendoza"
                           value={clienteNombre}
                           onChange={e => setClienteNombre(e.target.value)}
@@ -476,9 +485,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Teléfono de Contacto</label>
-                        <input 
-                          type="tel" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="tel"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="999 999 999"
                           value={clienteTelefono}
                           onChange={e => setClienteTelefono(e.target.value)}
@@ -489,7 +498,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     <div>
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Distrito de Destino (Lima Metropolitana) *</label>
                       <div className="relative">
-                        <select 
+                        <select
                           className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-black text-xs appearance-none shadow-sm transition-all pr-12"
                           value={distritoSeleccionado}
                           onChange={e => handleDistritoChange(e.target.value)}
@@ -500,6 +509,32 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                           ))}
                         </select>
                         <i className="fas fa-location-dot absolute right-6 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none opacity-50"></i>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Dirección Exacta de Entrega</label>
+                      <textarea
+                        className="w-full p-5 rounded-[1.5rem] bg-white border border-indigo-100 outline-none focus:ring-4 focus:ring-indigo-500/10 font-bold text-xs shadow-sm transition-all resize-none h-24"
+                        placeholder="Ej: Av. Principal 123 - Ref: Frente al parque"
+                        value={direccionLima}
+                        onChange={e => setDireccionLima(e.target.value)}
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Estado de Pago del Pedido *</label>
+                      <div className="flex flex-wrap gap-4 bg-white p-2 rounded-[2rem] border border-indigo-100 shadow-inner">
+                        {['Pago Completo', 'Adelanto S/ 30', 'Pago Pendiente'].map(estado => (
+                          <button
+                            key={estado}
+                            type="button"
+                            onClick={() => setEstadoPagoEnvio(estado)}
+                            className={`flex-1 min-w-[120px] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${estadoPagoEnvio === estado ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
+                          >
+                            {estado}
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -521,7 +556,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       <div className="lg:col-span-1">
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Agencia *</label>
-                        <select 
+                        <select
                           className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-black text-xs appearance-none shadow-sm transition-all"
                           value={agenciaProvincia}
                           onChange={e => setAgenciaProvincia(e.target.value)}
@@ -532,9 +567,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       {agenciaProvincia === 'Otro' && (
                         <div className="lg:col-span-2">
                           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Nombre de Agencia *</label>
-                          <input 
-                            type="text" 
-                            className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all" 
+                          <input
+                            type="text"
+                            className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all"
                             placeholder="Especifica la agencia"
                             value={agenciaOtro}
                             onChange={e => setAgenciaOtro(e.target.value)}
@@ -546,9 +581,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Nombre Completo del Cliente *</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="text"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="Ej: Sofia Mendoza"
                           value={clienteNombre}
                           onChange={e => setClienteNombre(e.target.value)}
@@ -556,9 +591,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Número DNI</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="text"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="8 dígitos"
                           value={clienteDni}
                           onChange={e => setClienteDni(e.target.value)}
@@ -569,9 +604,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Teléfono</label>
-                        <input 
-                          type="tel" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="tel"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="999 999 999"
                           value={clienteTelefono}
                           onChange={e => setClienteTelefono(e.target.value)}
@@ -579,9 +614,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       </div>
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Destino (Ciudad / Agencia) *</label>
-                        <input 
-                          type="text" 
-                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all" 
+                        <input
+                          type="text"
+                          className="w-full p-5 rounded-[1.5rem] bg-white border border-amber-100 outline-none focus:ring-4 focus:ring-amber-500/10 font-bold text-xs shadow-sm transition-all"
                           placeholder="Ej: Trujillo Centro"
                           value={destinoProvincia}
                           onChange={e => setDestinoProvincia(e.target.value)}
@@ -593,9 +628,9 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">Estado de Pago del Pedido *</label>
                       <div className="flex flex-wrap gap-4 bg-white p-2 rounded-[2rem] border border-amber-100 shadow-inner">
                         {['Pago Completo', 'Adelanto S/ 30', 'Pago Pendiente'].map(estado => (
-                          <button 
-                            key={estado} 
-                            type="button" 
+                          <button
+                            key={estado}
+                            type="button"
                             onClick={() => setEstadoPagoEnvio(estado)}
                             className={`flex-1 min-w-[120px] py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${estadoPagoEnvio === estado ? 'bg-amber-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-50'}`}
                           >
@@ -610,7 +645,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                 {/* OBSERVACIONES GENERALES */}
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5 ml-2">Notas y Observaciones de la Venta</label>
-                  <textarea 
+                  <textarea
                     className="w-full p-8 rounded-[2.5rem] bg-slate-50 border border-slate-100 outline-none focus:ring-4 focus:ring-indigo-500/5 font-bold text-slate-600 text-xs resize-none h-40 shadow-inner"
                     placeholder="Escribe aquí detalles adicionales (ej: horario de entrega, referencia de casa, etc.)"
                     value={comentario}
@@ -625,7 +660,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       {activePromosSugeridas.map(promo => (
-                        <button 
+                        <button
                           key={promo.id}
                           type="button"
                           onClick={() => applyPromo(promo)}
@@ -653,7 +688,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                     </div>
                     <div className="relative">
                       <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-indigo-400/50 text-2xl italic">S/</span>
-                      <input 
+                      <input
                         type="number" step="0.01" className={`w-full bg-slate-800/50 border-2 rounded-[2.2rem] py-7 pl-16 pr-8 font-black text-4xl focus:outline-none transition-all ${totalAjustado !== null ? 'border-indigo-500 text-indigo-400' : 'border-slate-800 text-white'}`}
                         placeholder={subtotalSugerido.toString()}
                         value={totalAjustado === null ? '' : totalAjustado}
@@ -681,7 +716,7 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       <span>POR PAGAR</span>
                     </div>
                   )}
-                  
+
                   <div className="pt-8 border-t border-slate-800">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-2 text-center">Monto Total a Cobrar</span>
@@ -691,23 +726,23 @@ const SalesRegistry: React.FC<SalesRegistryProps> = ({ productos, promociones, o
                       </div>
                     </div>
                   </div>
-                  
-                  <button 
-                    type="submit" 
-                    disabled={cart.length === 0} 
+
+                  <button
+                    type="submit"
+                    disabled={cart.length === 0}
                     className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-800 disabled:text-slate-600 text-white font-black py-7 rounded-[2.2rem] shadow-2xl shadow-emerald-950/20 transition-all uppercase tracking-[0.4em] text-[11px] mt-10 active:scale-95 group"
                   >
                     Confirmar Venta <i className="fas fa-check-double ml-3 group-hover:translate-x-1 transition-transform"></i>
                   </button>
-                  
+
                   <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest text-center mt-6">Sistema SYS • Registro Seguro de Venta</p>
                 </div>
               </div>
             </div>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

@@ -22,7 +22,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, toggleS
     { id: 'commissions', icon: 'fa-hand-holding-dollar', label: 'Comisiones', roles: [UserRole.ADMIN, UserRole.OWNER, UserRole.SELLER] },
     { id: 'users', icon: 'fa-user-group', label: 'Personal', roles: [UserRole.ADMIN] },
     { id: 'history', icon: 'fa-history', label: 'Historial', roles: [UserRole.ADMIN, UserRole.OWNER, UserRole.SELLER] },
-    { id: 'settings', icon: 'fa-database', label: 'Configuración', roles: [UserRole.ADMIN] },
   ];
 
   const menuItems = allItems.filter(item => item.roles.includes(role));
@@ -85,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, toggleS
               <p className="text-xs font-bold text-white truncate uppercase">{userName}</p>
             </div>
           </div>
-          <button onClick={onLogout} className="w-full flex items-center p-4 rounded-2xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all">
+          <button onClick={handleLogout} className="w-full flex items-center p-4 rounded-2xl text-slate-500 hover:bg-rose-500/10 hover:text-rose-400 transition-all">
             <i className="fas fa-power-off w-6 text-center"></i>
             <span className="ml-4 text-xs font-black uppercase tracking-widest">Cerrar Sesión</span>
           </button>

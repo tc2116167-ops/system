@@ -16,11 +16,11 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showStockModal, setShowStockModal] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
-  
+
   const [modelSearch, setModelSearch] = useState('');
   const [colorSearch, setColorSearch] = useState('');
   const [sizeSearch, setSizeSearch] = useState('');
-  
+
   const [showModelList, setShowModelList] = useState(false);
   const [showColorList, setShowColorList] = useState(false);
   const [showSizeList, setShowSizeList] = useState(false);
@@ -44,14 +44,16 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
   const filtered = useMemo(() => {
     const q = filter.toLowerCase();
     return productos.filter(p => {
-      // Restricción por rol de dueño
-      if (role === UserRole.OWNER && p.propietario !== currentUser.propietarioAsignado) {
-        return false;
+      // Restricción por rol de dueño (Case insensitive para seguridad)
+      if (role === UserRole.OWNER) {
+        const ownerName = p.propietario?.toLowerCase().trim();
+        const currentOwner = currentUser.propietarioAsignado?.toLowerCase().trim();
+        if (ownerName !== currentOwner) return false;
       }
       // Filtro de búsqueda
       return (
-        p.nombre.toLowerCase().includes(q) || 
-        p.color.toLowerCase().includes(q) || 
+        p.nombre.toLowerCase().includes(q) ||
+        p.color.toLowerCase().includes(q) ||
         p.propietario.toLowerCase().includes(q)
       );
     }).sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -134,7 +136,7 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventario");
-    
+
     const today = new Date();
     const dateStr = `${today.getDate()}_${today.getMonth() + 1}_${today.getFullYear()}`;
     const prefix = role === UserRole.OWNER ? `Inventario_${currentUser.propietarioAsignado}` : 'Inventario_Global';
@@ -146,32 +148,32 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
       <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="relative w-full md:w-1/3">
           <i className="fas fa-search absolute left-5 top-1/2 -translate-y-1/2 text-slate-300"></i>
-          <input 
-            type="text" 
-            placeholder="Filtrar inventario..." 
+          <input
+            type="text"
+            placeholder="Filtrar inventario..."
             className="w-full pl-14 pr-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm font-bold text-slate-700"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
-        
+
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-          <button 
+          <button
             onClick={handleExportExcel}
             className="w-full sm:w-auto px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest active:scale-95"
           >
             <i className="fas fa-file-excel mr-3"></i> Exportar Mi Stock
           </button>
-          
+
           {canManageStock && (
-            <button 
+            <button
               onClick={() => {
                 setShowAddProduct(true);
                 setModelSearch('');
                 setColorSearch('');
                 setSizeSearch('');
                 // Reiniciar propietario al asignado por defecto
-                setNewP(prev => ({...prev, propietario: currentUser.propietarioAsignado || Propietario.DUENO_1}));
+                setNewP(prev => ({ ...prev, propietario: currentUser.propietarioAsignado || Propietario.DUENO_1 }));
               }}
               className="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all flex items-center justify-center text-[10px] uppercase tracking-widest active:scale-95"
             >
@@ -199,7 +201,7 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
                 <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="py-5 px-8">
                     <span className="font-black text-slate-800 text-sm block uppercase tracking-tight">{p.nombre}</span>
-                    <span className="text-[9px] text-indigo-400 font-bold">ID: {p.id.substring(0,5)}</span>
+                    <span className="text-[9px] text-indigo-400 font-bold">ID: {p.id.substring(0, 5)}</span>
                   </td>
                   {role === UserRole.ADMIN && (
                     <td className="py-5 px-8">
@@ -223,17 +225,17 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
                   {canManageStock && (
                     <td className="py-5 px-8 text-center">
                       <div className="flex justify-center gap-2">
-                        <button 
+                        <button
                           onClick={() => {
                             setShowStockModal(p.id);
                             setStockAdjustment({ cantidad: 1, tipo: TipoMovimiento.ENTRADA, comentario: '' });
-                          }} 
+                          }}
                           className="w-10 h-10 text-indigo-500 hover:bg-indigo-600 hover:text-white rounded-xl transition-all border border-indigo-50 flex items-center justify-center"
                           title="Ajustar Stock"
                         >
                           <i className="fas fa-boxes-stacked"></i>
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDelete(p.id, p.nombre)}
                           className="w-10 h-10 text-rose-400 hover:bg-rose-500 hover:text-white rounded-xl transition-all border border-rose-50 flex items-center justify-center"
                           title="Eliminar Producto"
@@ -251,7 +253,9 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
                     <div className="flex flex-col items-center">
                       <i className="fas fa-box-open text-4xl text-slate-100 mb-4"></i>
                       <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
-                        {role === UserRole.OWNER ? 'No tienes prendas registradas bajo tu nombre' : 'No hay prendas en el inventario'}
+                        {role === UserRole.OWNER
+                          ? `No tienes prendas registradas bajo: ${currentUser.propietarioAsignado || '(Sin Asignar)'}`
+                          : 'No hay prendas en el inventario'}
                       </p>
                     </div>
                   </td>
@@ -267,13 +271,13 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-[3rem] p-10 w-full max-w-2xl shadow-2xl border border-slate-100 overflow-visible max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-8">
-               <h3 className="text-2xl font-black text-slate-900 flex items-center">
-                 <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mr-4 text-white shrink-0">
-                   <i className="fas fa-tag"></i>
-                 </div> 
-                 Registrar Prenda
-               </h3>
-               <button onClick={() => setShowAddProduct(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><i className="fas fa-times text-xl"></i></button>
+              <h3 className="text-2xl font-black text-slate-900 flex items-center">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center mr-4 text-white shrink-0">
+                  <i className="fas fa-tag"></i>
+                </div>
+                Registrar Prenda
+              </h3>
+              <button onClick={() => setShowAddProduct(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><i className="fas fa-times text-xl"></i></button>
             </div>
 
             <div className="space-y-6">
@@ -286,10 +290,10 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
               ) : (
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Asignar a Dueño</label>
-                  <select 
+                  <select
                     className="w-full p-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-black text-slate-700 uppercase"
                     value={newP.propietario}
-                    onChange={e => setNewP({...newP, propietario: e.target.value as Propietario})}
+                    onChange={e => setNewP({ ...newP, propietario: e.target.value as Propietario })}
                   >
                     {Object.values(Propietario).map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
@@ -299,14 +303,14 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
               <div className="relative" ref={modelRef}>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Nombre del Modelo</label>
                 <div className="relative">
-                  <input 
-                    type="text" 
-                    className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase" 
+                  <input
+                    type="text"
+                    className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase"
                     placeholder="Escribe o selecciona..."
                     value={modelSearch}
                     onChange={e => {
                       setModelSearch(e.target.value.toUpperCase());
-                      setNewP({...newP, nombre: e.target.value.toUpperCase()});
+                      setNewP({ ...newP, nombre: e.target.value.toUpperCase() });
                       setShowModelList(true);
                     }}
                     onFocus={() => setShowModelList(true)}
@@ -323,19 +327,19 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
                   </div>
                 )}
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="relative" ref={colorRef}>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Color / Tono</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase" 
+                    <input
+                      type="text"
+                      className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase"
                       placeholder="Ej: AZUL REY"
                       value={colorSearch}
                       onChange={e => {
                         setColorSearch(e.target.value.toUpperCase());
-                        setNewP({...newP, color: e.target.value.toUpperCase()});
+                        setNewP({ ...newP, color: e.target.value.toUpperCase() });
                         setShowColorList(true);
                       }}
                       onFocus={() => setShowColorList(true)}
@@ -355,14 +359,14 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
                 <div className="relative" ref={sizeRef}>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Talla</label>
                   <div className="relative">
-                    <input 
-                      type="text" 
-                      className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase" 
+                    <input
+                      type="text"
+                      className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 outline-none font-black text-slate-700 uppercase"
                       placeholder="Ej: M o XL"
                       value={sizeSearch}
                       onChange={e => {
                         setSizeSearch(e.target.value.toUpperCase());
-                        setNewP({...newP, talla: e.target.value.toUpperCase() as Talla});
+                        setNewP({ ...newP, talla: e.target.value.toUpperCase() as Talla });
                         setShowSizeList(true);
                       }}
                       onFocus={() => setShowSizeList(true)}
@@ -383,16 +387,36 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
               <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-center">Stock Inicial</label>
-                  <input type="number" className="w-full bg-white p-4 rounded-xl text-center font-black text-2xl focus:ring-2 focus:ring-indigo-500 outline-none" value={newP.stock} onChange={e => setNewP({...newP, stock: parseInt(e.target.value) || 0})} />
+                  <input
+                    type="number"
+                    className="w-full bg-white p-4 rounded-xl text-center font-black text-2xl focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={newP.stock || ''}
+                    onChange={e => {
+                      const val = e.target.value;
+                      // Permitir borrar todo (string vacío) o parsear a int
+                      if (val === '') {
+                        setNewP({ ...newP, stock: 0 });
+                      } else {
+                        setNewP({ ...newP, stock: parseInt(val) || 0 });
+                      }
+                    }}
+                    onFocus={e => e.target.select()} // Seleccionar todo al hacer clic
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 text-center">Precio Unitario</label>
-                  <input type="number" className="w-full bg-white p-4 rounded-xl text-center font-black text-2xl text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none" value={newP.precioBase} onChange={e => setNewP({...newP, precioBase: parseFloat(e.target.value) || 0})} />
+                  <input
+                    type="number"
+                    className="w-full bg-white p-4 rounded-xl text-center font-black text-2xl text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    value={newP.precioBase || ''}
+                    onChange={e => setNewP({ ...newP, precioBase: parseFloat(e.target.value) || 0 })}
+                    onFocus={e => e.target.select()}
+                  />
                 </div>
               </div>
             </div>
 
-            <button onClick={() => { if(!newP.nombre || !newP.color || !newP.talla) return alert("Completa Modelo, Color y Talla."); onAddProduct(newP); setShowAddProduct(false); }} className="w-full mt-8 py-5 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-[0.98]">Registrar en Mi Stock</button>
+            <button onClick={() => { if (!newP.nombre || !newP.color || !newP.talla) return alert("Completa Modelo, Color y Talla."); onAddProduct(newP); setShowAddProduct(false); }} className="w-full mt-8 py-5 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-indigo-700 transition-all active:scale-[0.98]">Registrar en Mi Stock</button>
           </div>
         </div>
       )}
@@ -405,37 +429,45 @@ const Inventory: React.FC<InventoryProps> = ({ productos, onAddProduct, onAddMov
             <p className="text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-8">
               {productos.find(p => p.id === showStockModal)?.nombre} - {productos.find(p => p.id === showStockModal)?.color}
             </p>
-            
+
             <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
-              <button onClick={() => setStockAdjustment({...stockAdjustment, tipo: TipoMovimiento.ENTRADA})} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${stockAdjustment.tipo === TipoMovimiento.ENTRADA ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400'}`}>Entrada (+)</button>
-              <button onClick={() => setStockAdjustment({...stockAdjustment, tipo: TipoMovimiento.SALIDA})} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${stockAdjustment.tipo === TipoMovimiento.SALIDA ? 'bg-white text-rose-600 shadow-md' : 'text-slate-400'}`}>Salida (-)</button>
+              <button onClick={() => setStockAdjustment({ ...stockAdjustment, tipo: TipoMovimiento.ENTRADA })} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${stockAdjustment.tipo === TipoMovimiento.ENTRADA ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400'}`}>Entrada (+)</button>
+              <button onClick={() => setStockAdjustment({ ...stockAdjustment, tipo: TipoMovimiento.SALIDA })} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${stockAdjustment.tipo === TipoMovimiento.SALIDA ? 'bg-white text-rose-600 shadow-md' : 'text-slate-400'}`}>Salida (-)</button>
             </div>
 
             <div className="space-y-4 mb-10 text-left">
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Cantidad de unidades</label>
-                <input 
-                  type="number" 
-                  className="w-full p-4 rounded-2xl bg-slate-50 text-4xl font-black text-center text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none" 
-                  value={stockAdjustment.cantidad} 
-                  onChange={e => setStockAdjustment({...stockAdjustment, cantidad: Math.abs(parseInt(e.target.value)) || 1})} 
+                <input
+                  type="number"
+                  className="w-full p-4 rounded-2xl bg-slate-50 text-4xl font-black text-center text-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={stockAdjustment.cantidad || ''}
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (val === '') {
+                      setStockAdjustment({ ...stockAdjustment, cantidad: 0 });
+                    } else {
+                      setStockAdjustment({ ...stockAdjustment, cantidad: Math.abs(parseInt(val)) || 0 });
+                    }
+                  }}
+                  onFocus={e => e.target.select()}
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Observación / Motivo</label>
-                <textarea 
+                <textarea
                   className="w-full p-4 rounded-2xl bg-slate-50 border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-600 text-xs resize-none h-24"
                   placeholder="Ej: Prenda fallada, envío a provincia, etc."
                   value={stockAdjustment.comentario}
-                  onChange={e => setStockAdjustment({...stockAdjustment, comentario: e.target.value})}
+                  onChange={e => setStockAdjustment({ ...stockAdjustment, comentario: e.target.value })}
                 ></textarea>
               </div>
             </div>
-            
+
             <div className="flex gap-4">
               <button onClick={() => setShowStockModal(null)} className="flex-1 py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest rounded-2xl">Cerrar</button>
-              <button 
+              <button
                 onClick={() => {
                   onAddMovement({
                     productoId: showStockModal,
